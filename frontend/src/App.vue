@@ -56,7 +56,7 @@ const handleUpload = async () => {
     const destination = travelInfo.value.destination || 'travel'
 
     // 为每个景点搜索图片（最多6个景点，每个2张）
-    const imagePromises = highlights.slice(0, 6).map(spot =>
+    const imagePromises = highlights.slice(0, 6).map((spot: string) =>
       fetch(`${API_BASE_URL}/api/images/search?keyword=${encodeURIComponent(spot + ' ' + destination)}&count=2`)
         .then(r => r.json())
         .catch(() => ({ images: [] }))
