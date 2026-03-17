@@ -1,5 +1,6 @@
 # 上传文件
-uploads/
+uploads/*
+!uploads/.gitkeep
 
 # 日志
 *.log
