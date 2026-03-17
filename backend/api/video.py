@@ -30,6 +30,14 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
         destination = travel_info.get('destination', '')
         highlights = travel_info.get('highlights', [])
 
+    # 字体路径：优先使用macOS字体，fallback到Linux字体
+    font_candidates = [
+        '/System/Library/Fonts/STHeiti Medium.ttc',  # macOS
+        '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',  # Linux
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux fallback
+    ]
+    font_file = next((f for f in font_candidates if os.path.exists(f)), font_candidates[-1])
+
     animations = ['slow_zoom_in', 'slow_zoom_out', 'pan_left', 'pan_right']
 
     shot_plan = []
@@ -80,7 +88,7 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
             width=1080,
             height=1920,
             fps=30,
-            font_file='/System/Library/Fonts/STHeiti Medium.ttc',
+            font_file=font_file,
             bgm_path='',
             voice='coral',
             voice_model='gpt-4o-mini-tts'
@@ -99,7 +107,9 @@ async def generate_video(data: dict):
         if not images or len(images) == 0:
             raise HTTPException(status_code=400, detail="没有可用的图片")
 
-        temp_dir = '/Users/yuekuoming/lvyou/backend/uploads'
+        # 使用相对路径，兼容本地和服务器环境
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        temp_dir = os.path.join(base_dir, 'uploads')
         os.makedirs(temp_dir, exist_ok=True)
 
         # 下载所有图片
