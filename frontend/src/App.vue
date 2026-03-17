@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoCamera, Upload, Document, Picture, MagicStick, Edit } from '@element-plus/icons-vue'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
 const step = ref(0)
 const loading = ref(false)
 const pdfFile = ref<File | null>(null)
@@ -30,11 +32,11 @@ const handleUpload = async () => {
     // 1. 上传PDF
     const formData = new FormData()
     formData.append('file', pdfFile.value)
-    const uploadRes = await fetch('http://localhost:8000/api/upload', { method: 'POST', body: formData })
+    const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', body: formData })
     const uploadData = await uploadRes.json()
 
     // 2. 解析PDF
-    const parseRes = await fetch('http://localhost:8000/api/parse', {
+    const parseRes = await fetch(`${API_BASE_URL}/api/parse`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filepath: uploadData.path })
@@ -42,7 +44,7 @@ const handleUpload = async () => {
     travelInfo.value = await parseRes.json()
 
     // 3. 生成文案
-    const copyRes = await fetch('http://localhost:8000/api/copywriter/generate', {
+    const copyRes = await fetch(`${API_BASE_URL}/api/copywriter/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(travelInfo.value)
@@ -55,7 +57,7 @@ const handleUpload = async () => {
 
     // 为每个景点搜索图片（最多6个景点，每个2张）
     const imagePromises = highlights.slice(0, 6).map(spot =>
-      fetch(`http://localhost:8000/api/images/search?keyword=${encodeURIComponent(spot + ' ' + destination)}&count=2`)
+      fetch(`${API_BASE_URL}/api/images/search?keyword=${encodeURIComponent(spot + ' ' + destination)}&count=2`)
         .then(r => r.json())
         .catch(() => ({ images: [] }))
     )
@@ -69,7 +71,7 @@ const handleUpload = async () => {
     }
 
     // 5. 生成脚本
-    const scriptRes = await fetch('http://localhost:8000/api/script/generate', {
+    const scriptRes = await fetch(`${API_BASE_URL}/api/script/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ travel_info: travelInfo.value, copy_data: copyData.value })
@@ -87,7 +89,7 @@ const handleUpload = async () => {
 const handleGenerateVideo = async () => {
   loading.value = true
   try {
-    const videoRes = await fetch('http://localhost:8000/api/video/generate', {
+    const videoRes = await fetch(`${API_BASE_URL}/api/video/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -110,7 +112,7 @@ const handleGenerateVideo = async () => {
 
 const downloadVideo = () => {
   const link = document.createElement('a')
-  link.href = 'http://localhost:8000' + videoPath.value
+  link.href = API_BASE_URL + videoPath.value
   link.download = 'promo_video.mp4'
   link.click()
 }
@@ -270,7 +272,7 @@ const downloadVideo = () => {
             </div>
 
             <div style="max-width: 600px; margin: 0 auto 30px;">
-              <video :src="'http://localhost:8000' + videoPath" controls style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></video>
+              <video :src="API_BASE_URL + videoPath" controls style="width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></video>
             </div>
 
             <div style="display: flex; gap: 16px; justify-content: center;">
