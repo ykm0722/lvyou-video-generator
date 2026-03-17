@@ -1,0 +1,16 @@
+video:
+  width: 1080
+  height: 1920
+  fps: 24
+  duration_per_scene: 3
+
+text_style:
+  font_path: "/System/Library/Fonts/STHeiti Medium.ttc"
+  main_color: "#FFD700"
+  outline_color: "#000000"
+  title_size: 90
+  point_size: 70
+  outline_width: 4
+
+claude:
+  model: "claude-opus-4-6"

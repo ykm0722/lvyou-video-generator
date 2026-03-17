@@ -1,0 +1,5 @@
+moviepy==1.0.3
+pdfplumber==0.11.0
+pillow==10.3.0
+anthropic==0.25.0
+pyyaml==6.0.1

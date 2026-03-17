@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>ai.openclaw.gateway.system</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>1</integer>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/opt/homebrew/opt/node/bin/node</string>
+      <string>/opt/homebrew/lib/node_modules/openclaw/dist/index.js</string>
+      <string>gateway</string>
+      <string>--port</string>
+      <string>18789</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/yuekuoming</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/yuekuoming/.openclaw/logs/gateway.system.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/yuekuoming/.openclaw/logs/gateway.system.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>HOME</key>
+      <string>/Users/yuekuoming</string>
+      <key>TMPDIR</key>
+      <string>/var/folders/7b/sjbrzhhd0cl8720zlxkwh1tr0000gn/T/</string>
+      <key>PATH</key>
+      <string>/Users/yuekuoming/.bun/bin:/Users/yuekuoming/.local/bin:/Users/yuekuoming/.npm-global/bin:/Users/yuekuoming/bin:/Users/yuekuoming/.volta/bin:/Users/yuekuoming/.asdf/shims:/Users/yuekuoming/Library/Application Support/fnm/aliases/default/bin:/Users/yuekuoming/.fnm/aliases/default/bin:/Users/yuekuoming/Library/pnpm:/Users/yuekuoming/.local/share/pnpm:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <key>NODE_EXTRA_CA_CERTS</key>
+      <string>/etc/ssl/cert.pem</string>
+      <key>NODE_USE_SYSTEM_CA</key>
+      <string>1</string>
+      <key>OPENCLAW_GATEWAY_PORT</key>
+      <string>18789</string>
+      <key>OPENCLAW_SERVICE_MARKER</key>
+      <string>openclaw</string>
+      <key>OPENCLAW_SERVICE_KIND</key>
+      <string>gateway</string>
+      <key>OPENCLAW_SERVICE_VERSION</key>
+      <string>2026.3.8</string>
+    </dict>
+  </dict>
+</plist>

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+
+# 环境变量
+.env
+*.env
+!.env.example
+
+# 临时文件
+tmp_*
+*.log
+*.tmp
+
+# 输出目录
+output/
+*.mp4
+*.mov
+*.avi
+*.jpg
+*.png
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
