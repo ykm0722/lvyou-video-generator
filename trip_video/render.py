@@ -9,9 +9,15 @@ from .models import DraftDocument, ShotPlan
 from .openai_api import OpenAIClient
 from .utils import dump_json, probe_duration
 
+# 获取FFmpeg路径（支持本地和部署环境）
+try:
+    from imageio_ffmpeg import get_ffmpeg_exe
+    FFMPEG_PATH = get_ffmpeg_exe()
+except ImportError:
+    FFMPEG_PATH = "ffmpeg"  # fallback到系统FFmpeg
 
 def ffmpeg(args: list[str]) -> None:
-    result = subprocess.run(["ffmpeg", "-y", *args], capture_output=True)
+    result = subprocess.run([FFMPEG_PATH, "-y", *args], capture_output=True)
     if result.returncode != 0:
         print(f"FFmpeg error: {result.stderr.decode()}", file=sys.stderr)
         raise subprocess.CalledProcessError(result.returncode, result.args, result.stderr)
