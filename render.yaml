@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: lvyou-video-generator
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      mkdir -p /opt/render/project/.ffmpeg
+      cd /opt/render/project/.ffmpeg
+      wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+      tar xf ffmpeg-release-amd64-static.tar.xz --strip-components=1
+      rm ffmpeg-release-amd64-static.tar.xz
+      export PATH="/opt/render/project/.ffmpeg:$PATH"
+      ffmpeg -version
+      ffprobe -version
+    startCommand: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PATH
+        value: /opt/render/project/.ffmpeg:$PATH
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    autoDeploy: true
