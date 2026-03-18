@@ -40,37 +40,8 @@ def prepare_text_file(path: Path, lines: list[str] | str) -> Path:
 
 
 def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, output_path: Path) -> Path | None:
-    if not shot.narration.strip():
-        return None
-
-    try:
-        import edge_tts
-        import asyncio
-        import threading
-
-        def run_edge_tts():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            communicate = edge_tts.Communicate(shot.narration, "zh-CN-XiaoxiaoNeural")
-            loop.run_until_complete(communicate.save(str(output_path)))
-            loop.close()
-
-        thread = threading.Thread(target=run_edge_tts)
-        thread.start()
-        thread.join(timeout=30)
-
-        # 验证音频
-        result = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "stream=channels",
-             "-of", "default=noprint_wrappers=1:nokey=1", str(output_path)],
-            capture_output=True, timeout=5
-        )
-        if result.stdout.decode().strip() not in ['', '0']:
-            return output_path
-        output_path.unlink()
-    except Exception as exc:
-        print(f"Edge TTS failed for {shot.id}: {exc}", file=sys.stderr)
-
+    # 临时禁用 TTS - Edge TTS 在 Render 上被封禁
+    print(f"TTS disabled for {shot.id}, generating video without narration", file=sys.stderr)
     return None
 
 
