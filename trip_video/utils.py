@@ -7,15 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# 获取FFprobe路径
-try:
-    from imageio_ffmpeg import get_ffmpeg_exe
-    FFMPEG_PATH = get_ffmpeg_exe()
-    # imageio-ffmpeg只提供ffmpeg，用ffmpeg获取时长
-    FFPROBE_PATH = FFMPEG_PATH
-except ImportError:
-    FFPROBE_PATH = "ffprobe"  # fallback到系统ffprobe
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 PDF_EXTENSIONS = {".pdf"}
@@ -63,10 +54,9 @@ def run_command(args: list[str], cwd: Path | None = None) -> subprocess.Complete
 
 def probe_duration(path: Path) -> float:
     try:
-        # 尝试使用ffprobe
         result = run_command(
             [
-                FFPROBE_PATH if FFPROBE_PATH != FFMPEG_PATH else "ffprobe",
+                "ffprobe",
                 "-v",
                 "error",
                 "-show_entries",
@@ -80,27 +70,7 @@ def probe_duration(path: Path) -> float:
         if output == 'N/A' or not output:
             return 0.0
         return float(output)
-    except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
-        # 如果ffprobe不可用，尝试用ffmpeg
-        try:
-            result = run_command(
-                [
-                    FFMPEG_PATH,
-                    "-i",
-                    str(path),
-                    "-f",
-                    "null",
-                    "-"
-                ]
-            )
-            # 从stderr中提取时长
-            import re
-            match = re.search(r"Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})", result.stderr)
-            if match:
-                h, m, s = match.groups()
-                return int(h) * 3600 + int(m) * 60 + float(s)
-        except:
-            pass
+    except (subprocess.CalledProcessError, ValueError):
         return 0.0
 
 
