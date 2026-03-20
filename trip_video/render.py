@@ -11,7 +11,8 @@ from .utils import dump_json, probe_duration
 
 
 def ffmpeg(args: list[str]) -> None:
-    result = subprocess.run(["ffmpeg", "-y", *args], capture_output=True)
+    # 限制线程数为 1，减少内存峰值
+    result = subprocess.run(["ffmpeg", "-y", "-threads", "1", *args], capture_output=True)
     if result.returncode != 0:
         print(f"FFmpeg error: {result.stderr.decode()}", file=sys.stderr)
         raise subprocess.CalledProcessError(result.returncode, result.args, result.stderr)

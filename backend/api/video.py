@@ -85,9 +85,9 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
         assets=[Asset(path=p, kind='image', selected=True) for p in image_paths],
         shot_plan=shot_plan,
         render_config=RenderConfig(
-            width=720,
-            height=1280,
-            fps=24,
+            width=540,
+            height=960,
+            fps=15,
             font_file=font_file,
             bgm_path='',
             voice='coral',

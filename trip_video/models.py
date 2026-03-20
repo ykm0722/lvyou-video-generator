@@ -46,9 +46,9 @@ class ShotPlan:
 
 @dataclass
 class RenderConfig:
-    width: int = 1080
-    height: int = 1920
-    fps: int = 30
+    width: int = 540
+    height: int = 960
+    fps: int = 15
     voice: str = "coral"
     voice_model: str = "gpt-4o-mini-tts"
     voice_instructions: str = "Use energetic but trustworthy Mandarin Chinese suitable for a travel promotion."
