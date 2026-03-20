@@ -40,11 +40,37 @@ def prepare_text_file(path: Path, lines: list[str] | str) -> Path:
     return path
 
 
-def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, output_path: Path) -> Path | None:
-    # 临时禁用 TTS - Edge TTS 在 Render 上被封禁
-    print(f"TTS disabled for {shot.id}, generating video without narration", file=sys.stderr)
-    return None
+import asyncio
+import edge_tts
 
+def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, output_path: Path) -> Path | None:
+    # 1. 优先使用 OpenAI TTS (如果配置了 OPENAI_API_KEY)
+    if client.enabled:
+        try:
+            print(f"Generating OpenAI TTS for {shot.id}...", file=sys.stderr)
+            audio_bytes = client.speech(
+                text=shot.narration,
+                voice=document.render_config.voice,
+                model=document.render_config.voice_model,
+            )
+            output_path.write_bytes(audio_bytes)
+            return output_path
+        except Exception as e:
+            print(f"OpenAI TTS failed for {shot.id}: {e}", file=sys.stderr)
+    
+    # 2. 尝试使用免费的 Edge TTS 作为后备方案 (注意：部分 Render IP 可能被封禁导致失败)
+    try:
+        print(f"Generating Edge TTS for {shot.id}...", file=sys.stderr)
+        voice = 'zh-CN-XiaoxiaoNeural' # 中文优质女声
+        communicate = edge_tts.Communicate(shot.narration, voice)
+        asyncio.run(communicate.save(str(output_path)))
+        return output_path
+    except Exception as e:
+        print(f"Edge TTS fallback failed for {shot.id}: {e}", file=sys.stderr)
+
+    # 3. 如果全部失败，静音处理
+    print(f"All TTS methods failed or disabled for {shot.id}, continuing without narration.", file=sys.stderr)
+    return None
 
 def render_shot(document: DraftDocument, shot: ShotPlan, temp_dir: Path, index: int) -> Path:
     image_path = Path(shot.image_path)
