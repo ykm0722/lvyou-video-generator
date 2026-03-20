@@ -39,7 +39,11 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
         destination = travel_info.get('destination', '')
         highlights = travel_info.get('highlights', [])
 
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    bundled_font = os.path.join(base_dir, 'resource', 'fonts', 'wqy-microhei.ttc')
+
     font_candidates = [
+        bundled_font,  # First bundled
         '/System/Library/Fonts/STHeiti Medium.ttc',  # macOS
         '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',  # Linux
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux fallback
