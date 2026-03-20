@@ -68,7 +68,17 @@ def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, 
     except Exception as e:
         print(f"Edge TTS fallback failed for {shot.id}: {e}", file=sys.stderr)
 
-    # 3. 如果全部失败，静音处理
+    # 3. 终极无敌免费兜底方案: Google TTS (几乎不会被封)
+    try:
+        print(f"Generating gTTS (Google) for {shot.id}...", file=sys.stderr)
+        from gtts import gTTS
+        tts = gTTS(text=shot.narration, lang='zh-CN' if 'zh' in document.render_config.voice_model else 'zh-cn')
+        tts.save(str(output_path))
+        return output_path
+    except Exception as e:
+        print(f"gTTS fallback failed for {shot.id}: {e}", file=sys.stderr)
+
+    # 4. 如果全部失败，静音处理
     print(f"All TTS methods failed or disabled for {shot.id}, continuing without narration.", file=sys.stderr)
     return None
 
