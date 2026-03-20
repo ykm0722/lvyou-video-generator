@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException
 import sys
 import os
 import requests
+import threading
+import uuid
 from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from trip_video.render import render_video
@@ -9,28 +11,34 @@ from trip_video.models import DraftDocument, TripProfile, ShotPlan, RenderConfig
 
 router = APIRouter()
 
+# In-memory task storage for async video generation
+_tasks: dict[str, dict] = {}
+
+MAX_SCENES = 5
+
+
 def transform_api_to_document(script: dict, image_paths: list[str], output_dir: str,
                                copy_data: dict = None, travel_info: dict = None):
-    """将 API 输入转换为 FFmpeg 渲染器格式，充分利用所有数据"""
-    title = script.get('title', '精品旅游')
+    """Transform API input to FFmpeg renderer format"""
+    title = script.get('title', 'Travel Promo')
     scenes = script.get('scenes', [])
 
     if not scenes:
-        raise ValueError("脚本中没有场景内容")
+        raise ValueError("No scenes in script")
 
-    # 获取爆款文案卖点
+    # Limit scenes to reduce render time
+    scenes = scenes[:MAX_SCENES]
+
     selling_points = []
     if copy_data:
         selling_points = copy_data.get('points', [])[:3]
 
-    # 获取目的地和景点信息
     destination = ''
     highlights = []
     if travel_info:
         destination = travel_info.get('destination', '')
         highlights = travel_info.get('highlights', [])
 
-    # 字体路径：优先使用macOS字体，fallback到Linux字体
     font_candidates = [
         '/System/Library/Fonts/STHeiti Medium.ttc',  # macOS
         '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',  # Linux
@@ -45,20 +53,18 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
         image_path = image_paths[idx % len(image_paths)]
 
         text = scene.get('text', '')
-        duration = scene.get('duration', 4.0)
+        duration = scene.get('duration', 3.0)
 
-        # 智能拆分文字：标题 + 卖点
         if '\n' in text:
             lines = text.split('\n')
-            headline = lines[0][:25]  # 增加到25字
+            headline = lines[0][:25]
             overlay_lines = [line.strip() for line in lines[1:3] if line.strip()]
         else:
-            headline = text[:25]  # 增加到25字
+            headline = text[:25]
             overlay_lines = selling_points[idx:idx+2] if idx < len(selling_points) else []
 
-        # 旁白和字幕保持一致
         narration = text
-        subtitle = text[:40]  # 增加到40字
+        subtitle = text[:40]
 
         shot_plan.append(ShotPlan(
             id=f'shot-{idx}',
@@ -95,9 +101,36 @@ def transform_api_to_document(script: dict, image_paths: list[str], output_dir: 
         )
     )
 
+
+def _render_task(task_id: str, document: DraftDocument, temp_dir: str):
+    """Background render worker"""
+    try:
+        result = render_video(document)
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        unique_filename = f"video_{timestamp}.mp4"
+        unique_path = os.path.join(temp_dir, unique_filename)
+
+        if os.path.exists(result['video']):
+            os.rename(result['video'], unique_path)
+
+        _tasks[task_id] = {
+            "status": "done",
+            "path": f"/uploads/{unique_filename}",
+        }
+    except Exception as e:
+        import traceback
+        error_detail = f"Render failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail, file=sys.stderr)
+        _tasks[task_id] = {
+            "status": "error",
+            "detail": str(e),
+        }
+
+
 @router.post("/video/generate")
 async def generate_video(data: dict):
-    """生成推广视频"""
+    """Start async video generation, return task_id immediately"""
     try:
         script = data.get('script', {})
         images = data.get('images', [])
@@ -105,14 +138,13 @@ async def generate_video(data: dict):
         travel_info = data.get('travelInfo')
 
         if not images or len(images) == 0:
-            raise HTTPException(status_code=400, detail="没有可用的图片")
+            raise HTTPException(status_code=400, detail="No images available")
 
-        # 使用相对路径，兼容本地和服务器环境
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         temp_dir = os.path.join(base_dir, 'uploads')
         os.makedirs(temp_dir, exist_ok=True)
 
-        # 下载所有图片
+        # Download images
         image_paths = []
         for idx, img_data in enumerate(images):
             image_url = img_data.get('url', '')
@@ -127,31 +159,35 @@ async def generate_video(data: dict):
                 f.write(response.content)
             image_paths.append(image_path)
 
-        # 转换数据格式并渲染
         document = transform_api_to_document(
             script, image_paths, temp_dir,
             copy_data=copy_data,
             travel_info=travel_info
         )
 
-        # 检查 TTS 配置
-        if not os.getenv('OPENAI_API_KEY'):
-            print("⚠️  提示：设置 OPENAI_API_KEY 环境变量可启用 TTS 旁白")
+        # Create task and start background render
+        task_id = str(uuid.uuid4())[:8]
+        _tasks[task_id] = {"status": "pending"}
 
-        result = render_video(document)
+        thread = threading.Thread(
+            target=_render_task,
+            args=(task_id, document, temp_dir),
+            daemon=True
+        )
+        thread.start()
 
-        # 生成唯一文件名并重命名
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        unique_filename = f"video_{timestamp}.mp4"
-        unique_path = os.path.join(temp_dir, unique_filename)
-
-        # 重命名生成的视频文件
-        if os.path.exists(result['video']):
-            os.rename(result['video'], unique_path)
-
-        return {"status": "success", "path": f"/uploads/{unique_filename}"}
+        return {"status": "accepted", "task_id": task_id}
     except Exception as e:
         import traceback
-        error_detail = f"视频生成失败: {str(e)}\n{traceback.format_exc()}"
+        error_detail = f"Video generation failed: {str(e)}\n{traceback.format_exc()}"
         print(error_detail, file=sys.stderr)
-        raise HTTPException(status_code=500, detail=f"视频生成失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
+
+
+@router.get("/video/status/{task_id}")
+async def get_video_status(task_id: str):
+    """Poll for video generation status"""
+    task = _tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task

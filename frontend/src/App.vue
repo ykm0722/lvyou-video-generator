@@ -89,6 +89,7 @@ const handleUpload = async () => {
 const handleGenerateVideo = async () => {
   loading.value = true
   try {
+    // 1. 发起生成请求
     const videoRes = await fetch(`${API_BASE_URL}/api/video/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,13 +100,35 @@ const handleGenerateVideo = async () => {
         travelInfo: travelInfo.value
       })
     })
-    const videoData = await videoRes.json()
-    videoPath.value = videoData.path
-    step.value = 2
-    ElMessage.success('视频生成成功！')
+    const startData = await videoRes.json()
+    const taskId = startData.task_id
+
+    if (!taskId) {
+      throw new Error('未获取到任务ID')
+    }
+
+    // 2. 轮询状态
+    const checkStatus = async () => {
+      const statusRes = await fetch(`${API_BASE_URL}/api/video/status/${taskId}`)
+      const statusData = await statusRes.json()
+
+      if (statusData.status === 'done') {
+        videoPath.value = statusData.path
+        step.value = 2
+        loading.value = false
+        ElMessage.success('视频生成成功！')
+      } else if (statusData.status === 'error') {
+        loading.value = false
+        ElMessage.error('视频生成失败: ' + (statusData.detail || '未知错误'))
+      } else {
+        // 继续轮询
+        setTimeout(checkStatus, 3000)
+      }
+    }
+
+    checkStatus()
   } catch (error: any) {
     ElMessage.error('视频生成失败: ' + error.message)
-  } finally {
     loading.value = false
   }
 }
