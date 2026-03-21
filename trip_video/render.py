@@ -63,7 +63,15 @@ def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, 
         print(f"Generating Edge TTS for {shot.id}...", file=sys.stderr)
         voice = 'zh-CN-XiaoxiaoNeural' # 中文优质女声
         communicate = edge_tts.Communicate(shot.narration, voice)
-        asyncio.run(communicate.save(str(output_path)))
+        
+        # 安全地在辅助线程中运行 asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(communicate.save(str(output_path)))
+        finally:
+            loop.close()
+            
         return output_path
     except Exception as e:
         print(f"Edge TTS fallback failed for {shot.id}: {e}", file=sys.stderr)
@@ -127,45 +135,46 @@ def render_shot(document: DraftDocument, shot: ShotPlan, temp_dir: Path, index: 
     )
     draw_filters = ",".join(filter(None, [animation_filter(shot.animation, width, height, fps, duration), subtitle_style]))
     clip_path = temp_dir / f"clip-{index}.mp4"
-    args = [
-        "-loop",
-        "1",
-        "-t",
-        f"{duration:.2f}",
-        "-i",
-        str(image_path),
-    ]
-    if has_audio:
-        args.extend(["-i", str(audio_path)])
-    else:
-        args.extend(["-f", "lavfi", "-t", f"{duration:.2f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"])
-    args.extend(
-        [
-            "-vf",
-            draw_filters,
-            "-map",
-            "0:v:0",
-            "-map",
-            "1:a:0",
-            "-shortest",
-            "-r",
-            str(fps),
-            "-pix_fmt",
-            "yuv420p",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "28",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            str(clip_path),
+    
+    def build_args(with_audio: bool):
+        _args = [
+            "-loop", "1",
+            "-t", f"{duration:.2f}",
+            "-i", str(image_path),
         ]
-    )
-    ffmpeg(args)
+        if with_audio:
+            _args.extend(["-i", str(audio_path)])
+        else:
+            _args.extend(["-f", "lavfi", "-t", f"{duration:.2f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"])
+        _args.extend(
+            [
+                "-vf", draw_filters,
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-shortest",
+                "-r", str(fps),
+                "-pix_fmt", "yuv420p",
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "28",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                str(clip_path),
+            ]
+        )
+        return _args
+        
+    try:
+        ffmpeg(build_args(has_audio))
+    except subprocess.CalledProcessError as e:
+        if has_audio:
+            print(f"FFmpeg failed with audio for {shot.id}, retrying without audio. Error: {e}", file=sys.stderr)
+            if clip_path.exists():
+                clip_path.unlink()
+            ffmpeg(build_args(False))
+        else:
+            raise
+
     return clip_path
 
 
