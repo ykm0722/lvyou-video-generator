@@ -54,7 +54,8 @@ def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, 
                 model=document.render_config.voice_model,
             )
             output_path.write_bytes(audio_bytes)
-            return output_path
+            if output_path.exists() and output_path.stat().st_size > 1000:
+                return output_path
         except Exception as e:
             print(f"OpenAI TTS failed for {shot.id}: {e}", file=sys.stderr)
     
@@ -72,7 +73,10 @@ def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, 
         finally:
             loop.close()
             
-        return output_path
+        if output_path.exists() and output_path.stat().st_size > 1000:
+            return output_path
+        else:
+            raise ValueError(f"edge-tts output is too small or missing, size: {output_path.stat().st_size if output_path.exists() else 0} bytes")
     except Exception as e:
         print(f"Edge TTS fallback failed for {shot.id}: {e}", file=sys.stderr)
 
@@ -82,7 +86,10 @@ def generate_tts(client: OpenAIClient, document: DraftDocument, shot: ShotPlan, 
         from gtts import gTTS
         tts = gTTS(text=shot.narration, lang='zh-CN' if 'zh' in document.render_config.voice_model else 'zh-cn')
         tts.save(str(output_path))
-        return output_path
+        if output_path.exists() and output_path.stat().st_size > 1000:
+            return output_path
+        else:
+            raise ValueError("gTTS output is too small or missing")
     except Exception as e:
         print(f"gTTS fallback failed for {shot.id}: {e}", file=sys.stderr)
 
