@@ -24,14 +24,18 @@ def shell_quote_filter_path(path: Path) -> str:
 
 def animation_filter(animation: str, width: int, height: int, fps: int, duration: float) -> str:
     frames = max(int(math.ceil(duration * fps)), 1)
-    base = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}"
+    
+    # 爆款画质：使用 2 倍超采样 (2x Oversampling) 然后缩小，彻底消除 zoompan 产生的由于像素取整导致的“抖动”问题
+    sw, sh = width * 2, height * 2
+    
+    base = f"scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={sw}:{sh}"
     if animation == "slow_zoom_out":
         return f"{base},zoompan=z='if(lte(zoom,1.0),1.12,max(1.0,zoom-0.0012))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={width}x{height}:fps={fps}"
     if animation == "pan_left":
         return f"{base},zoompan=z='1.08':x='max(0,iw-iw/zoom-(on/{frames})*(iw-iw/zoom))':y='ih/2-(ih/zoom/2)':d={frames}:s={width}x{height}:fps={fps}"
     if animation == "pan_right":
         return f"{base},zoompan=z='1.08':x='(on/{frames})*(iw-iw/zoom)':y='ih/2-(ih/zoom/2)':d={frames}:s={width}x{height}:fps={fps}"
-    return f"{base},zoompan=z='min(zoom+0.0012,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={width}x{height}:fps={fps}"
+    return f"{base},zoompan=z='min(zoom+0.0015,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={width}x{height}:fps={fps}"
 
 
 def prepare_text_file(path: Path, lines: list[str] | str) -> Path:
@@ -119,24 +123,24 @@ def render_shot(document: DraftDocument, shot: ShotPlan, temp_dir: Path, index: 
     font = document.render_config.font_file
     title_style = (
         f"drawtext=fontfile='{shell_quote_filter_path(Path(font))}':textfile='{shell_quote_filter_path(title_file)}':"
-        f"fontcolor=0xF8E8C5:fontsize={document.render_config.title_font_size}:line_spacing=10:"
-        "box=1:boxcolor=0x411E0B@0.36:boxborderw=18:"
-        f"x=(w-text_w)/2:y=h*0.20"
+        f"fontcolor=0xFFE600:fontsize={document.render_config.title_font_size + 8}:line_spacing=12:"
+        "box=1:boxcolor=0x000000@0.5:boxborderw=20:"
+        f"x=(w-text_w)/2:y=h*0.12"
         if font
         else ""
     )
     badges_style = (
         f"drawtext=fontfile='{shell_quote_filter_path(Path(font))}':textfile='{shell_quote_filter_path(badges_file)}':"
-        "fontcolor=white:fontsize=50:line_spacing=16:box=1:boxcolor=0xA6401B@0.60:boxborderw=18:"
-        "x=w*0.10:y=h*0.60"
+        "fontcolor=white:fontsize=50:line_spacing=20:box=1:boxcolor=0xE62117@0.85:boxborderw=24:"
+        "x=(w-text_w)/2:y=h*0.55"
         if font
         else ""
     )
     subtitle_style = (
         f"drawtext=fontfile='{shell_quote_filter_path(Path(font))}':textfile='{shell_quote_filter_path(subtitle_file)}':"
-        f"fontcolor=white:fontsize={document.render_config.subtitle_font_size}:line_spacing=12:box=1:"
-        "boxcolor=0x101010@0.45:boxborderw=18:x=(w-text_w)/2:"
-        f"y=h-{document.render_config.bottom_margin}"
+        f"fontcolor=white:fontsize={document.render_config.subtitle_font_size + 12}:line_spacing=14:box=1:"
+        "boxcolor=0x000000@0.7:boxborderw=24:x=(w-text_w)/2:"
+        f"y=h-{document.render_config.bottom_margin + 50}"
         if font
         else ""
     )
